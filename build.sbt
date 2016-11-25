@@ -9,7 +9,8 @@ libraryDependencies ++=  {
   Seq(
     "org.eclipse.californium" % "californium-core" % californiumVersion,
     // TODO - Only http core will be depended on
-    "com.typesafe.akka" %% "akka-http" % "10.0.0"
+    "com.typesafe.akka" %% "akka-http" % "10.0.0",
+    "org.slf4j" % "slf4j-jdk14" % "1.7.21"
   )
 }
 
