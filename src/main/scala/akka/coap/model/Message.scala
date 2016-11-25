@@ -11,15 +11,19 @@ sealed trait Message
 
 case class Request(method: Method) extends Message
 
-object Request {
-  def fromRaw(message: californium.Request): Request = Request(
-    message.getCode match {
-      case CoAP.Code.POST => POST
-    }
-  )
-}
-
 case class Response() extends Message
 
 sealed trait Method
+
+object Method {
+  def fromCode(code: Int) = code match {
+    case 1 => GET
+    case 2 => POST
+    case 3 => PUT
+    case 4 => DELETE
+  }
+}
 case object POST extends Method
+case object GET extends Method
+case object PUT extends Method
+case object DELETE extends Method

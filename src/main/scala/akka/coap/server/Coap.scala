@@ -3,14 +3,16 @@ package akka.coap.server
 import java.net.InetSocketAddress
 
 import akka.actor._
-import akka.coap.model.Request
+import akka.coap.model.{PreBuildCaliforniumMarshallers, Request}
 import akka.io.{IO, Udp}
 import akka.stream.scaladsl.Source
-import akka.stream.{ActorMaterializer, OverflowStrategies}
+import akka.stream.{Materializer, ActorMaterializer, OverflowStrategies}
 import org.eclipse.californium.core.CoapClient
 import org.eclipse.californium.core.{coap => californiuum}
 import org.eclipse.californium.core.network.serialization.UdpDataParser
 import org.eclipse.californium.elements.RawData
+import akka.http.scaladsl.marshalling.Marshal
+import akka.http.scaladsl.model._
 
 /**
   * Created by ytaras on 11/25/16.
@@ -24,39 +26,21 @@ object Coap extends ExtensionId[CoapExt] with ExtensionIdProvider {
 class CoapExt extends Extension {
   case class Stopper(ourListener: ActorRef)
 
-  def bind(port: Int)(implicit as: ActorSystem): Source[Request, Stopper] = {
+  def bind(port: Int)(implicit as: ActorSystem, mat: Materializer): Source[Request, Stopper] = {
+    import PreBuildCaliforniumMarshallers._
+    import as.dispatcher
     val addr = new InetSocketAddress("localhost", port)
     val source = Source.actorRef[Udp.Event](10000, OverflowStrategies.DropTail)
-    // TODO Marshall
-    val dataParser = new UdpDataParser()
     source.mapMaterializedValue { publisher =>
       val sendTo = as.actorOf(Props(new UdpCoapListener(publisher, addr)))
       Stopper(sendTo)
-    }.map {
-      case Udp.Received(data, sender) =>
-        Request.fromRaw(dataParser.parseMessage(
-          new RawData(data.toArray, sender)
-        ).asInstanceOf[californiuum.Request])
-        // TODO Marshall
+    }.mapAsync(4) {
+      case x: Udp.Received => Marshal(x).to[Request]
     }
   }
 }
 
-class UdpCoapListener(nextActor: ActorRef, bindAddress: InetSocketAddress) extends Actor with ActorLogging {
-  import context.system
-  IO(Udp) ! Udp.Bind(self, bindAddress)
-  def ready(socket: ActorRef): Receive = {
-    case x: Udp.Received =>
-      log.debug("Received: {}", x)
-      nextActor forward x
-  }
 
-  override def receive: Actor.Receive = {
-    case x: Udp.Bound =>
-      log.debug("Bound: {}", x)
-      context.become(ready(sender()))
-  }
-}
 object Main extends App {
   implicit val as = ActorSystem()
   implicit val am = ActorMaterializer()
