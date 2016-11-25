@@ -13,7 +13,8 @@ case class Request(method: Method) extends Message
 
 case class Response() extends Message
 
-sealed trait Method
+sealed abstract class Method(val rawCode: Int) {
+}
 
 object Method {
   def fromCode(code: Int) = code match {
@@ -23,7 +24,7 @@ object Method {
     case 4 => DELETE
   }
 }
-case object POST extends Method
-case object GET extends Method
-case object PUT extends Method
-case object DELETE extends Method
+case object POST extends Method(2)
+case object GET extends Method(1)
+case object PUT extends Method(3)
+case object DELETE extends Method(4)

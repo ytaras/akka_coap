@@ -17,9 +17,7 @@ trait CaliforniumMarshallers {
   type FromUdpMarshaller[T] = Marshaller[Udp.Received, T]
 
   def akkaToCaliforniumRequest(x: Request) = {
-    val method = x.method match {
-      case POST => californium.CoAP.Code.POST
-    }
+    val method = californium.CoAP.Code.valueOf(x.method.rawCode)
     new californium.Request(method)
   }
 

@@ -2,10 +2,12 @@ package akka.coap.server
 
 import java.net.InetSocketAddress
 
+import akka.NotUsed
 import akka.actor._
-import akka.coap.model.{PreBuildCaliforniumMarshallers, Request}
+import akka.coap.model.{Response, PreBuildCaliforniumMarshallers, Request}
+import akka.http.scaladsl.Http
 import akka.io.{IO, Udp}
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Keep, Flow, Sink, Source}
 import akka.stream.{Materializer, ActorMaterializer, OverflowStrategies}
 import org.eclipse.californium.core.CoapClient
 import org.eclipse.californium.core.{coap => californiuum}
@@ -40,11 +42,25 @@ class CoapExt extends Extension {
   }
 }
 
+final case class IncomingConnection(
+                                   localAddress: InetSocketAddress,
+                                   remoteAddress: InetSocketAddress,
+                                   flow: Flow[Response, Request, NotUsed]
+                                   ) {
+  def handleWith[Mat](handler: Flow[Request, Response, Mat])(implicit mat: Materializer): Mat =
+    flow.joinMat(handler)(Keep.right).run()
+
+}
+
 
 object Main extends App {
   implicit val as = ActorSystem()
   implicit val am = ActorMaterializer()
-  Coap.get(as).bind(1234).runForeach(println)
+  val ic: IncomingConnection = ???
+  ic.handleWith(Flow[Request].map(_ => ???))
+  Coap.get(as).bind(1234).to(Sink.foreach { inputConnection =>
+
+  })
 
   new CoapClient("coap://localhost:1234/").post("abc", 1)
 }
